@@ -23,7 +23,6 @@ func (t Template) Execute(w http.ResponseWriter, data interface{}) {
 	}
 }
 
-
 func Parse(filepath string) (Template, error) {
 	tpl, err := template.ParseFiles(filepath)
 
@@ -32,4 +31,11 @@ func Parse(filepath string) (Template, error) {
 	}
 
 	return Template{htmlTpl: tpl}, nil
+}
+
+func Must(t Template, err error) Template {
+	if err != nil {
+		panic(err)
+	}
+	return t
 }
