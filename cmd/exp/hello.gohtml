@@ -1,0 +1,15 @@
+{{.Name}}
+{{.Age}}
+{{ .Weight }}
+{{ .Map }}
+{{ range .Slice }} {{.}} {{end}}
+{{ range $index, $element := .Slice }} {{$index}}, {{$element}} {{end}}
+
+{{ range .Map }} {{.}} {{end}}
+{{ range $index, $element := .Map }} {{$index}}, {{$element}} {{end}}
+
+{{index .Map "a a"}}
+
+ {{.SayHello }}
+
+
