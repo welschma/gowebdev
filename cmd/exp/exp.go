@@ -1,41 +1,39 @@
 package main
 
 import (
-	"html/template"
-	"os"
+	"fmt"
+
+	"github.com/welschma/gowebdev/models"
 )
 
-type User struct {
-	Name string
-	Bio  string
-	Age  int
-	Weight float64
-	Slice []string
-	Map map[string]string
-}
-
-func (u User) SayHello() string {
-	return "Hello " + u.Name
+type Order struct {
+	ID          int
+	UserID      int
+	Amount      int
+	Description string
 }
 
 func main() {
-	t, err := template.ParseFiles("hello.gohtml")
+	cfg := models.DefaultPostgresConfig()
+	db, err := models.Open(cfg)
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+
+	err = db.Ping()
+	if err != nil {
+		panic(err)
+	}
+
+	us := models.UserService{DB: db}
+
+	user, err := us.Create("bob@bob.com", "bob123")
 
 	if err != nil {
 		panic(err)
 	}
 
-	user := User{
-		Name: "Jon Calhoun",
-		Age:  123,
-		Weight: 123.456,
-		Slice: []string{"a", "b", "c"},
-		Map: map[string]string{"a a": "b", "c": "d"},
-	}
+	fmt.Println(user)
 
-	err = t.Execute(os.Stdout, user)
-
-	if err != nil {
-		panic(err)
-	}
 }
