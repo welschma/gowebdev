@@ -2,14 +2,23 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/gorilla/csrf"
 	"github.com/welschma/gowebdev/controllers"
 	"github.com/welschma/gowebdev/models"
 	"github.com/welschma/gowebdev/templates"
 	"github.com/welschma/gowebdev/views"
 )
+
+func RequestLoggerMw(h http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        log.Printf("Incoming %v request for %v from IP adress: %v", r.Method, r.URL, r.RemoteAddr)
+        h.ServeHTTP(w, r)
+    })
+}
 
 func main() {
 
@@ -25,9 +34,22 @@ func main() {
 		DB: db,
 	}
 
+    sessionService := models.SessionService{
+        DB: db,
+    }
+
 	usersC := controllers.Users{
 		UserService: &userService,
+        SessionService: &sessionService,
 	}	
+
+    csrfKey := "gFvi45R4fy5xNBlnEeZtQbfAVCYEIAUX"
+    csrfMw := csrf.Protect(
+        []byte(csrfKey),
+        csrf.Secure(false),
+        )
+
+
 
 	r := chi.NewRouter()
 
@@ -49,6 +71,10 @@ func main() {
 	r.Get("/signin", usersC.SignIn)
 	r.Post("/signin", usersC.ProcessSignIn)
 
+    r.Post("/signout", usersC.ProcessSignOut)
+
+    r.Get("/users/me", usersC.CurrentUser)
+
 	fmt.Println("Starting the server on :3000...")
-	http.ListenAndServe(":3000", r)
+	http.ListenAndServe(":3000", RequestLoggerMw(csrfMw(r)))
 }
