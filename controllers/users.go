@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/welschma/gowebdev/context"
 	"github.com/welschma/gowebdev/models"
 )
 
@@ -107,22 +108,60 @@ func (u Users) ProcessSignOut(w http.ResponseWriter, r *http.Request) {
 
 }
 
+
+//SetUser and RequireUser middleware are required
 func (u Users) CurrentUser(w http.ResponseWriter, r *http.Request) {
-    token, err := readCookie(r, CookieSession)
-
-    if err != nil {
-        fmt.Println(err)
-        http.Redirect(w, r, "/signin", http.StatusFound)
-        return
-    }
-
-    user, err := u.SessionService.User(token)
-
-    if err != nil {
-        fmt.Println(err)
-        http.Redirect(w, r, "/signin", http.StatusFound)
-        return
-    }
-
+    user := context.User(r.Context())
     fmt.Fprintf(w, "Current user: %s\n", user.Email)
+}
+
+
+type UserMiddleware struct  {
+    SessionService *models.SessionService
+}
+
+func (umw UserMiddleware) RequireUser(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        user := context.User(r.Context())
+        
+        if user == nil {
+            http.Redirect(w, r, "/signin", http.StatusFound)
+            return
+        }
+
+        next.ServeHTTP(w, r)
+    })
+}
+
+func (umw UserMiddleware) SetUser(next http.Handler) http.Handler {
+    return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+        token, err := readCookie(r, CookieSession)
+
+        if err != nil {
+            fmt.Println(err)
+            next.ServeHTTP(w, r)
+            return
+        }
+
+        if token == "" {
+            fmt.Println("encountered empty session toke")
+            next.ServeHTTP(w, r)
+            return 
+        }
+
+        user, err := umw.SessionService.User(token)
+
+        if err != nil {
+            fmt.Println(err)
+            next.ServeHTTP(w, r)
+            return
+        }
+
+        ctx := r.Context()
+        ctx = context.WithUser(ctx, user)
+        r = r.WithContext(ctx)
+
+        next.ServeHTTP(w, r)
+
+    })
 }
